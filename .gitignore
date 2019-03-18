@@ -1,0 +1,5 @@
+.idea
+*py[cod]
+migrations
+logs/log*
+.qiniu*
