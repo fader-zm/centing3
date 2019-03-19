@@ -3,6 +3,8 @@ from ihome.utils import constants
 
 access_key = "ZGRTD6PTItXf8nSlgLJMLnFLqUSzo_gyksBE1kfn"
 secret_key = "F94iItDyMW14wNPWDa9xWKMduUcLSv2csHDnFHbd"
+access_key = "ZGRTD6PTItXf8nSlgLJMLnFLqUSzo_gyksBE1kfn"
+secret_key= "F94iItDyMW14wNPWDa9xWKMduUcLSv2csHDnFHbd"
 bucket_name = "information"  # 存储空间名称
 
 
