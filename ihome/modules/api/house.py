@@ -99,6 +99,9 @@ def house_index():
     """
     # 首页展示最多的房屋数量
     constants.HOME_PAGE_MAX_HOUSES
+    # 1.
+    
+    
     # 查询房屋对象列表
     house_obj_list = House.query.all()
     house_list = []

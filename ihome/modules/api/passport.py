@@ -69,20 +69,22 @@ def login():
     """
 
     # 获取参数
-    mobile=request.json.get('mobile')
-    password=request.json.get('password')
+    mobile = request.json.get('mobile')
+    password = request.json.get('password')
+    # print(mobile, password)
 
     # 判断是否有值
-    if not all([mobile,password]):
+    if not all([mobile, password]):
         return jsonify(errno=RET.PARAMERR, errmsg='参数不足')
 
     # 判断手机号码格式
-    if not re.match(r'^1[3578]\d{9}',mobile):
+    if not re.match(r'^1[3578]\d{9}', mobile):
         return jsonify(errno=RET.PARAMERR, errmsg='手机号码格式错误')
 
     # 从数据库中查询出指定用户
     try:
-        user=User.query.filter(User.mobile==mobile).first()
+        user = User.query.filter(User.mobile == mobile).first()
+        # print(user)
     except Exception as e:
         current_app.logger.error(e)
         return jsonify(errno=RET.DBERR, errmsg='查询用户对象异常')
@@ -93,7 +95,6 @@ def login():
     if user.check_passowrd(password) is False:
         return jsonify(errno=RET.DATAERR, errmsg='密码填写错误')
 
-
     # 保存用户登录状态
     try:
         db.session.commit()
@@ -101,12 +102,13 @@ def login():
         current_app.logger.error(e)
         db.session.rollback()
         return jsonify(errno=RET.PARAMERR, errmsg='异常')
-    session['mobile']=user.mobile
-    session['name']=user.name
-    session['user_id']=user.id
+    session['mobile'] = user.mobile
+    session['name'] = user.name
+    session['user_id'] = user.id
 
     # 返回结果
     return jsonify(errno=RET.OK, errmsg='登录成功')
+
 
 # 获取登录状态
 @api_blu.route('/session')
@@ -119,19 +121,19 @@ def check_login():
     user_id = g.user_id
     # 从数据库中查询出指定用户
     try:
-        user=User.query.get(user_id)
+        user = User.query.get(user_id)
     except Exception as e:
         current_app.logger.error(e)
         return jsonify(errno=RET.DBERR, errmsg='查询用户对象异常')
 
     # 将用户对象转换成字典
     user_dict = user.to_dict() if user else None
-    data={
-        'name':user.name,
-        'user_id':user_id
+    data = {
+        'name': user.name,
+        'user_id': user_id
     }
     # 返回结果
-    return jsonify(errno=RET.OK, errmsg='OK',data=data)
+    return jsonify(errno=RET.OK, errmsg='OK', data=data)
 
 
 # 退出登录
