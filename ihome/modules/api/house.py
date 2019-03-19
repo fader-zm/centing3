@@ -89,15 +89,24 @@ def get_house_detail(house_id):
     pass
 
 
-# 获取首页展示内容
+# 首页房屋推荐展示
+# /api/v1.0/houses/index
 @api_blu.route('/houses/index')
 def house_index():
     """
-    获取首页房屋列表
+    首页房屋推荐展示
     :return:
     """
-    pass
-
+    # 首页展示最多的房屋数量
+    constants.HOME_PAGE_MAX_HOUSES
+    # 查询房屋对象列表
+    house_obj_list = House.query.all()
+    house_list = []
+    # 查询每个房屋对象的房屋图片
+    for house in house_obj_list if house_obj_list else None:
+        house_list.append(house.to_basic_dict())
+    return jsonify(errno=RET.OK, errmsg="OK", data=house_list)
+    
 
 # 搜索房屋/获取房屋列表
 @api_blu.route('/houses')

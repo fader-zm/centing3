@@ -1,7 +1,9 @@
 # 七牛上传文件的工具类
-access_key = "kJ8wVO7lmFGsdvtI5M7eQDEJ1eT3Vrygb4SmR00E"
-secret_key= "rGwHyAvnlLK7rU4htRpNYzpuz0OHJKzX2O1LWTNl"
-bucket_name = "infonews"  # 存储空间名称
+from ihome.utils import constants
+
+access_key = "ZGRTD6PTItXf8nSlgLJMLnFLqUSzo_gyksBE1kfn"
+secret_key = "F94iItDyMW14wNPWDa9xWKMduUcLSv2csHDnFHbd"
+bucket_name = "information"  # 存储空间名称
 
 
 def storage_image(data):
@@ -27,7 +29,8 @@ def storage_image(data):
 
 
 if __name__ == '__main__':
-    file_name = input("请输入文件名：")
-    with open(file_name, "rb") as f:
-        storage_image(f.read())
+    # file_name = input("请输入文件名：")
+    with open("../static/images/houseicon_sprite.png", "rb") as f:
+        name = storage_image(f.read())
+        print(name)
 
