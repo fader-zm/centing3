@@ -25,9 +25,8 @@ def get_user_info():
     """
     user_id = g.user_id
     user = User.query.get(user_id)
-    data = user.to_dict()
 
-    return jsonify(errno=RET.OK, errmsg="OK", data=data)
+    return jsonify(errno=RET.OK, errmsg="OK", data = user.to_dict())
 
 
 # 修改用户名avatar
@@ -41,21 +40,26 @@ def set_user_name():
     3. 返回结果
     :return:
     """
-    if not login_required:
-        return jsonify(errno=RET.SESSIONERR, errmsg="用户未登录")
 
-    name = request.form.get('name')
+    param_dict = request.json
+    name = param_dict.get('name')
     if not name:
         return jsonify(errno=RET.SESSIONERR, errmsg="用户名不能为空")
+    user_id = g.user_id
+    try:
+        user = User.query.get(user_id)
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.DBERR, errmsg="查询用户异常")
 
     user.name = name
+
     try:
         db.session.commit()
     except Exception as e:
         current_app.logger.error(e)
         db.session.rollback()
         return jsonify(errno=RET.DBERR, errmsg="用户名保存异常")
-
     return jsonify(errno=RET.OK, errmsg="修改用户名成功")
 
 
@@ -71,11 +75,10 @@ def set_user_avatar():
     4. 返回上传的结果<avatar_url>
     :return:
     """
-    if not login_required:
-        return jsonify(errno=RET.SESSIONERR, errmsg="用户未登录")
 
     avatar = request.files.get('avatar')
     avatar = avatar.read()
+
     if not avatar:
         return jsonify(errno=RET.NODATA, errmsg="图片数据为空")
 
@@ -84,9 +87,17 @@ def set_user_avatar():
     except Exception as e:
         current_app.logger.error(e)
         return jsonify(errno=RET.THIRDERR, errmsg="七牛云上传图片异常")
+    # 获取当前对象
+    user_id = g.user_id
+    # 根据对象id获取他的url
+    try:
+        user = User.query.get(user_id)
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.DBERR, errmsg="查询用户异常")
 
-    if avatar:
-        user.avatar_url = avatar
+    user.avatar_url = avatar
+
     try:
         db.session.commit()
     except Exception as e:
