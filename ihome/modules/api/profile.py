@@ -1,3 +1,5 @@
+import re
+
 from flask import request, current_app, jsonify, session, g
 from sqlalchemy.sql.functions import user
 
@@ -109,7 +111,29 @@ def get_user_auth():
     4. 返回信息
     :return:
     """
-    pass
+    # 取到当前登录用户id
+    user_id = g.user_id
+
+    # 通过id查找到当前用户
+    try:
+        user = User.query.get(user_id)
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.PARAMERR, errmsg='异常')
+
+    # 获取当前用户的信息并转换成字典
+    # data = user.to_dict() if user else None
+
+    real_name=user.real_name
+    id_card=user.id_card
+
+    data={
+        'real_name':real_name,
+        'id_card':id_card
+    }
+    # 返回信息
+    return jsonify(errno=RET.OK, errmsg='OK', data=data)
+
 
 
 # 设置用户实名信息
@@ -125,4 +149,38 @@ def set_user_auth():
     6. 返回结果
     :return:
     """
-    pass
+
+    # 取到当前登录用户id
+    user_id = g.user_id
+    # 取到传过来的认证的信息
+    real_name = request.json.get('real_name')
+    id_card = request.json.get('id_card')
+
+    # 判断身份证号码格式
+    if not re.match('(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)', id_card):
+        return jsonify(errno=RET.DATAERR, errmsg='身份证号码格式有误')
+
+    # 通过id查找到当前用户
+    try:
+        user = User.query.get(user_id)
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.DBERR, errmsg='查询用户对象异常')
+
+    if not user:
+        return jsonify(errno=RET.NODATA, errmsg='用户未登录')
+
+    # 更新用户的认证信息
+    user.real_name = real_name
+    user.id_card = id_card
+
+    # 保存到数据库
+    try:
+        db.session.commit()
+    except Exception as e:
+        current_app.logger.error(e)
+        db.session.rollback()
+        return jsonify(errno=RET.DBERR, errmsg='存储用户真实信息异常')
+
+    # 返回结果
+    return jsonify(errno=RET.OK, errmsg='设置用户实名信息成功', data=user.to_dict())
