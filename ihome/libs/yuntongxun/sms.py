@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 
-from .CCPRestSDK import REST
+from ihome.libs.yuntongxun.CCPRestSDK import REST
 import ssl
 
 ssl._create_default_https_context = ssl._create_unverified_context  # 全局取消证书验证
@@ -18,7 +18,7 @@ _appId = '8a216da86904c06001696132df242b9e'
 
 
 # 说明：请求地址，生产环境配置成app.cloopen.com
-_serverIP = 'sandboxapp.cloopen.com'
+_serverIP = 'app.cloopen.com'
 
 # 说明：请求端口 ，生产环境为8883
 _serverPort = "8883"
@@ -78,4 +78,5 @@ class CCP(object):
 if __name__ == '__main__':
     ccp = CCP()
     # 注意： 测试的短信模板编号为1
-    ccp.send_template_sms('18516952650', ['1234', 5], 1)
+    err = ccp.send_template_sms('13546940062', ['1234', 5], 1)
+    print(err)
