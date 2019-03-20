@@ -26,7 +26,7 @@ def get_user_house_list():
     :return:
     """
     user_id = g.user_id
-    
+
     # 获取房子数据
     house = []
     try:
@@ -69,31 +69,44 @@ def upload_house_image(house_id):
     :return:
     """
     # https://shimo.im/docs/VDyhJJddhh8QgpQd/ 《七牛云接口》
-
-    image_obj = request.files.get("house_image")
-    if not image_obj:
-        return jsonify(errno=RET.PARAMERR, errmsg="参数不足")
-
-    # 上传图片到七牛云
     try:
-        img_name = storage_image(image_obj.read())
-    except Exception as error:
-        return jsonify(errno=RET.THIRDERR, errmsg="上传图片到七牛云异常")
+        house=House.query.get(house_id)
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.DBERR, errmsg='查询房屋对象异常')
 
-    houseImageob = HouseImage()
-    houseImageob.house_id = house_id
-    houseImageob.url = img_name
-    # 提交数据到数据库
+    if not house:
+        return jsonify(errno=RET.NODATA, errmsg='房屋不存在')
+
+    house_image=request.files.get('house_image')
+    if not house_image:
+        return jsonify(errno=RET.NODATA, errmsg='没有上传房屋图片')
+
+    image_data=house_image.read()
     try:
-        db.session.add(houseImageob)
+        image_name=storage_image(image_data)
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.THIRDERR, errmsg='上传图片到七牛云异常')
+
+    house.index_image_url=image_name
+
+    url=constants.QINIU_DOMIN_PREFIX+image_name
+    houseImage=HouseImage()
+    houseImage.url=url
+    houseImage.house_id=house.id
+
+    try:
+        db.session.add(houseImage)
+        db.session.add(house)
         db.session.commit()
-    except Exception as error:
-        db.session.roolback()
-        return jsonify(errno=RET.SESSIONERR, errmsg="提交数据库异常")
+    except Exception as e:
+        current_app.logger.error(e)
+        db.session.rollback()
+        return jsonify(errno=RET.DBERR, errmsg='保存房屋图片到数据库异常')
 
-    img_name_url = constants.QINIU_DOMIN_PREFIX + houseImageob.url
+    return jsonify(errno=RET.OK, errmsg='上传房屋图片成功',data={'url':houseImage.url})
 
-    return jsonify(errno=RET.OK, errmsg="", data={"url": img_name_url})
 
 
 # 发布房源
