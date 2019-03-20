@@ -240,8 +240,7 @@ def get_house_list():
     ed = params.get("ed")
     page = 1
     # 每页显示的数据
-    per_page = 10
-    # print(len(params))
+    per_page = constants.HOUSE_LIST_PAGE_CAPACITY
     if aid == '' and ed == '':
         try:
             # 没有任何查询条件时,快速的返回响应,提升用户体验
