@@ -24,14 +24,14 @@ def get_user_house_list():
     :return:
     """
     user_id = g.user_id
-    try:
-        user = User.query.get(user_id)
-    except Exception as e:
-        current_app.logger.error(e)
-        return jsonify(errno=RET.PARAMERR, errmsg="查询用户异常")
-    # user = []
-    if not user:
-        return jsonify(reeno=RET.SESSIONERR, errmsg="用户未登录")
+    # try:
+    #     user = User.query.get(user_id)
+    # except Exception as e:
+    #     current_app.logger.error(e)
+    #     return jsonify(errno=RET.PARAMERR, errmsg="查询用户异常")
+    # # user = []
+    # if not user:
+    #     return jsonify(reeno=RET.SESSIONERR, errmsg="用户未登录")
 
     # 获取房子数据
     house = []
