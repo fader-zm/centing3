@@ -3,7 +3,7 @@ from _operator import or_
 
 from flask import current_app, jsonify, request, g, session
 from ihome import sr, db
-from ihome.models import Area, House, Facility, HouseImage, Order
+from ihome.models import Area, House, Facility, HouseImage, Order, User
 from ihome.modules.api import api_blu
 from ihome.utils import constants
 from ihome.utils.common import login_required
@@ -15,6 +15,7 @@ from sqlalchemy import not_
 
 
 # 我的发布列表
+# /api/v1.0/user/houses
 @api_blu.route('/user/houses')
 @login_required
 def get_user_house_list():
@@ -24,7 +25,17 @@ def get_user_house_list():
     2. 查询数据
     :return:
     """
-    pass
+    user_id = g.user_id
+    
+    # 获取房子数据
+    house = []
+    try:
+        house_obj_list = House.query.filter(House.user_id == user_id)
+    except Exception as error:
+        return jsonify(errno=RET.PARAMERR, errmsg="查询房子数据异常")
+    # 将房子对象转换成房子数据列表
+    user_houses = [house_obj.to_basic_dict() for house_obj in house_obj_list]
+    return jsonify(errno=RET.OK, errmsg="ok", data=user_houses)
 
 
 # 获取地区信息
@@ -35,7 +46,15 @@ def get_areas():
     2. 返回
     :return:
     """
-    return
+    try:
+        areas = Area.query.all()
+    except Exception as e:
+        return jsonify(errno=RET.DBERR, errmsg="数据库错误")
+    area_list = []
+    for area in areas if areas else None:
+        area_list.append(area.to_dict())
+
+    return jsonify(errno=RET.OK, errmsg="ok", data=area_list)
 
 
 # 上传房屋图片
@@ -49,7 +68,32 @@ def upload_house_image(house_id):
     4. 进行返回
     :return:
     """
-    pass
+    # https://shimo.im/docs/VDyhJJddhh8QgpQd/ 《七牛云接口》
+
+    image_obj = request.files.get("house_image")
+    if not image_obj:
+        return jsonify(errno=RET.PARAMERR, errmsg="参数不足")
+
+    # 上传图片到七牛云
+    try:
+        img_name = storage_image(image_obj.read())
+    except Exception as error:
+        return jsonify(errno=RET.THIRDERR, errmsg="上传图片到七牛云异常")
+
+    houseImageob = HouseImage()
+    houseImageob.house_id = house_id
+    houseImageob.url = img_name
+    # 提交数据到数据库
+    try:
+        db.session.add(houseImageob)
+        db.session.commit()
+    except Exception as error:
+        db.session.roolback()
+        return jsonify(errno=RET.SESSIONERR, errmsg="提交数据库异常")
+
+    img_name_url = constants.QINIU_DOMIN_PREFIX + houseImageob.url
+
+    return jsonify(errno=RET.OK, errmsg="", data={"url": img_name_url})
 
 
 # 发布房源
@@ -78,18 +122,74 @@ def save_new_house():
     }
     :return:
     """
-    pass
+    # 获得前端发送的数据
+    datas = request.json
+    title = datas.get("title")
+    price = datas.get("price")
+    area_id = datas.get("area_id")
+    address = datas.get("address")
+    room_count = datas.get("room_count")
+    acreage = datas.get("acreage")
+    unit = datas.get("unit")
+    capacity = datas.get("capacity")
+    beds = datas.get("beds")
+    deposit = datas.get("deposit")
+    min_days = datas.get("min_days")
+    max_days = datas.get("max_days")
+    facility = datas.get("facility")
+    # 非空和日期判断
+    if not all([title, price, area_id, address, room_count, acreage, unit
+                   , capacity, beds, deposit, min_days, max_days, facility]):
+        return jsonify(errno=RET.PARAMERR, errmsg="参数不足")
+    if int(min_days)< 0 or int(max_days)<0 or int(min_days)>int(max_days):
+        return jsonify(errno=RET.PARAMERR,errmsg="参数错误")
+    # 将参数添加到数据库
+    house = House()
+    house.title = title
+    house.price = price
+    house.area_id = area_id
+    house.address = address
+    house.room_count = room_count
+    house.acreage = acreage
+    house.unit = unit
+    house.capacity = capacity
+    house.beds = beds
+    house.deposit = deposit
+    house.min_days = min_days
+    house.max_days = max_days
+    house.user_id = g.user_id
+    house.facilities.extend([Facility.query.get(int(fid)) for fid in facility])
+    try:
+        db.session.add(house)
+        db.session.commit()
+    except Exception as e:
+        current_app.logger.error(e)
+        db.session.rollback()
+        return jsonify(errno=RET.DBERR, errmsg="保存房源对象错误")
+    data = {"house_id": house.id}
+    return jsonify(errno=RET.OK, errmsg="OK", data=data)
 
 
-# 房屋详情
+# 房屋详情/api/v1.0/houses/<int:house_id>
 @api_blu.route('/houses/<int:house_id>')
 def get_house_detail(house_id):
     """
     1. 通过房屋id查询出房屋模型
     :param house_id:
     :return:
-    """
-    pass
+    # """
+    user_id=session.get("user_id")
+    try:
+        house=House.query.get(house_id)
+    except Exception as e:
+        return jsonify(errno=RET.DBERR,errmsg="查询数据库有误")
+    house_dict=house.to_full_dict()
+
+    data={
+        "house":house_dict,
+        "user_id":user_id
+    }
+    return jsonify(errno=RET.OK,errmsg="OK",data=data)
 
 
 # 首页房屋推荐展示

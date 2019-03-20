@@ -4,19 +4,19 @@ function getCookie(name) {
 }
 
 $(document).ready(function(){
-    // $('.popup_con').fadeIn('fast');
-    // $('.popup_con').fadeOut('fast');
+    $('.popup_con').fadeIn('fast');
+    $('.popup_con').fadeOut('fast');
 
     // 在页面加载完毕之后获取区域信息
     $.get("/api/v1.0/areas", function (resp) {
         if (resp.errno == "0") {
             // 将数据添加到select的标签中
-            // for(var i=0; i<resp.data.length; i++) {
-            //     // <option value="1">东城区</option>
-            //     var areaId = resp.data[i].aid
-            //     var areaName = resp.data[i].aname
-            //     $("#area-id").append('<option value="' + areaId + '">' + areaName + '</option>')
-            // }
+            for(var i=0; i<resp.data.length; i++) {
+                // <option value="1">东城区</option>
+                var areaId = resp.data[i].aid
+                var areaName = resp.data[i].aname
+                $("#area-id").append('<option value="' + areaId + '">' + areaName + '</option>')
+            }
 
             var html = template("areas-tmpl", {"areas": resp.data})
             $("#area-id").html(html)
@@ -41,7 +41,7 @@ $(document).ready(function(){
             facility[i] = x.value
         })
         params["facility"] = facility
-
+        console.log(params)
         $.ajax({
             url: "/api/v1.0/houses",
             type: "post",
