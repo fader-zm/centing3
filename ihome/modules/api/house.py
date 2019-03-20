@@ -248,15 +248,29 @@ def get_house_list():
     params = request.args
     today = datetime.date.today()
     aid = params.get("aid")
-    sd = params.get("sd", today)
+    sd = params.get("sd")
     ed = params.get("ed")
     page = 1
+    # 筛选条件列表
+    # 请求地址条件
+    house_filter_list = list()
+    house_sort = House.create_time.desc()
+    # 排序方式
+    if "sk" in params.keys():
+        sk_rule = params.get("sk")
+        if sk_rule == "booking":
+            house_sort = House.order_count.desc()
+        elif sk_rule == "price-inc":
+            house_sort = House.price
+        elif sk_rule == "price-des":
+            house_sort = House.price.desc()
+            
     # 每页显示的数据
     per_page = constants.HOUSE_LIST_PAGE_CAPACITY
-    if aid == '' and ed == '':
+    if aid == '' and ed == '' and sd == '':
         try:
             # 没有任何查询条件时,快速的返回响应,提升用户体验
-            houses_obj = House.query.filter().order_by(House.price.asc()).paginate(page, per_page, False)
+            houses_obj = House.query.filter().order_by(house_sort).paginate(page, per_page, False)
         except Exception as e:
             return jsonify(errno=RET.DBERR, errmsg="数据库查询错误1")
 
@@ -268,12 +282,6 @@ def get_house_list():
             data = dict(houses=[house.to_basic_dict() for house in houses_obj_list], total_page=total_page)
             return jsonify(errno=0, errmsg="ok", data=data)
 
-    # 筛选条件列表
-    # 请求地址条件
-    house_filter_list = list()
-    house_sort = House.order_count.desc()
-    # 已预约的房间, 筛选条件
-    order_filter_list = list()
     # 请求页数
     if "p" in params.keys():
         page = params.get("p")
@@ -283,32 +291,27 @@ def get_house_list():
     if "aid" in params.keys():
         house_filter_list.append(House.area_id == params.get('aid'))
 
-    # 排序方式
-    if "sk" in params.keys():
-        sk_rule = params.get("sk")
-        if sk_rule == "booking":
-            house_sort = House.order_count.desc()
-        elif sk_rule == "price-inc":
-            house_sort = House.price
-        elif sk_rule == "price-des":
-            house_sort = House.price.desc()
-
-    # 预订时间
-
+    # 已预约的房间, 筛选条件列表
+    order_filter_list = list()
     # 不能预订的房间
     start_date = params.get("sd")
     end_date = params.get("ed")
-    order_filter_list = Order.query.filter(or_(and_(start_date <= Order.begin_date, end_date >= Order.begin_date),
-                                               and_(start_date <= Order.end_date, end_date >= Order.end_date),
-                                               and_(start_date >= Order.begin_date, end_date <= Order.end_date),
-                                               and_(start_date <= Order.begin_date, end_date >= Order.end_date))
-                                           ).filter(not_(Order.status.in_(["CANCELED", "REJECTED"]))).all()
-
+    
+    if start_date and end_date:
+        # 如果订单的开始时间 < 结束时间 and 订单的结束时间 > 开始时间
+        order_filter_list.append(and_(Order.begin_date < end_date, Order.end_date > start_date))
+    elif start_date:
+        # 订单的结束时间 > 开始时间
+        order_filter_list.append(Order.end_date > start_date)
+    elif end_date:
+        # 订单的开始时间 < 结束时间
+        order_filter_list.append(Order.begin_date < end_date)
+        
     # 不能预订的房间id
     if order_filter_list:
         try:
             # 查询出不能预订的房间对象
-            orders = Order.query.filter(or_(*order_filter_list)).all()
+            orders = Order.query.filter(*order_filter_list).all()
         except Exception as e:
             current_app.logger.error(e)
             return jsonify(errno=RET.DBERR, errmsg="数据库查询错误2")

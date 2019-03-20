@@ -48,14 +48,13 @@ def add_order():
         if days > house.max_days:
             return jsonify(errno=RET.PARAMERR, errmsg="预定天数大于最大预订天数")
 
-     # 如果订单状态是取消或者拒单,则该订单仍可进行下单
-
+    # 如果订单状态是取消或者拒单,则该订单仍可进行下单
     try:
-        date_count = Order.query.filter(not_(Order.status.in_(["CANCELED", "REJECTED"])).filter
-                                        (or_(and_(start_date <= Order.begin_date, end_date >= Order.begin_date),
+        date_count = Order.query.filter(or_(and_(start_date <= Order.begin_date, end_date >= Order.begin_date),
                                             and_(start_date <= Order.end_date, end_date >= Order.end_date),
                                             and_(start_date >= Order.begin_date, end_date <= Order.end_date),
-                                            and_(start_date <= Order.begin_date, end_date >= Order.end_date)))).count()
+                                            and_(start_date <= Order.begin_date, end_date >= Order.end_date))
+                                        ).filter(not_(Order.status.in_(["CANCELED", "REJECTED"]))).count()
     except Exception as e:
         current_app.logger.error(e)
         return jsonify(errno=RET.DBERR, errmsg="查询参数错误")
