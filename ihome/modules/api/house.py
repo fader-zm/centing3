@@ -1,5 +1,5 @@
 import datetime
-from _operator import or_
+from _operator import or_, and_
 
 from flask import current_app, jsonify, request, g, session
 from ihome import sr, db
@@ -282,14 +282,15 @@ def get_house_list():
             house_sort = House.price.desc()
     
     # 预订时间
-    if "sd" in params.keys():
+
         # 不能预订的房间
-        start_date_str = params.get("sd")
-        order_filter_list.append(Order.end_date > datetime.date.today())
-    if "ed" in params.keys():
-        # 不能预订的房间
-        end_date_str = params.get("ed")
-        order_filter_list.append(Order.begin_date < datetime.date.today())
+    start_date = params.get("sd")
+    end_date = params.get("ed")
+    order_filter_list = Order.query.filter(or_(and_(start_date <= Order.begin_date, end_date >= Order.begin_date),
+                                            and_(start_date <= Order.end_date, end_date >= Order.end_date),
+                                            and_(start_date >= Order.begin_date, end_date <= Order.end_date),
+                                            and_(start_date <= Order.begin_date, end_date >= Order.end_date))
+                                    ).filter(not_(Order.status.in_(["CANCELED", "REJECTED"]))).all()
     
     # 不能预订的房间id
     if order_filter_list:
