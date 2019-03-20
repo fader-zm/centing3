@@ -23,8 +23,7 @@ def get_user_house_list():
     2. 查询数据
     :return:
     """
-    user_id = request.json.get("user_id")
-
+    user_id = g.user_id
     try:
         user = User.query.get(user_id)
     except Exception as e:
@@ -38,26 +37,14 @@ def get_user_house_list():
     house = []
     try:
         # house = House.query.filter(house_id)
-        house_obj_list = House.query.filter(user_id == House.user_id)
+        house_obj_list = House.query.filter(House.user_id == user_id)
     except Exception as error:
         return jsonify(errno=RET.PARAMERR, errmsg="查询房子数据异常")
     # 将房子对象转换成房子数据列表
-    user_house_dict = None
-    for house in house_obj_list if house_obj_list else None:
-        user_house_dict.append(house.to_full_dict())
+    user_houses = [house_obj.to_basic_dict() for house_obj in house_obj_list]
+    print(user_houses)
 
-
-    data = user_house_dict
-
-    # 获取房子图片
-    area_name_list = None
-    area_obj_list = Area.query.all()
-    for area_name in area_obj_list if area_obj_list else None:
-        area_name_list.append(area_name.to_dict())
-
-    data = area_name_list
-
-
+    return jsonify(errno=RET.OK, errmsg="ok", data=user_houses)
 
 
 # 获取地区信息
@@ -69,17 +56,11 @@ def get_areas():
     :return:
     """
     try:
-        area_name_all = Area.quary.all(Area.id)
+        area_name_all = Area.query.all()
     except Exception as error:
         return jsonify(errno=RET.DBERR, errmsg="查询城区数据异常")
-
-    area_name_all_list = None
-    for area_name in area_name_all if area_name_all else None:
-        area_name_all_list.append(area_name.to_dict())
-
-    data = area_name_all_list
-
-    return data
+    area_name_list = [area_name.to_dict() for area_name in area_name_all]
+    return jsonify(errno=RET.OK, errmsg="返回OK", data=area_name_list)
 
 
 # 上传房屋图片
@@ -93,32 +74,32 @@ def upload_house_image(house_id):
     4. 进行返回
     :return:
     """
-    #https://shimo.im/docs/VDyhJJddhh8QgpQd/ 《七牛云接口》
+    # https://shimo.im/docs/VDyhJJddhh8QgpQd/ 《七牛云接口》
 
-    index_img_url = request.files.get("house_id")
-    user_id = request.json.get("user_id")
-
-    if not all([index_img_url, user_id]):
+    image_obj = request.files.get("house_image")
+    if not image_obj:
         return jsonify(errno=RET.PARAMERR, errmsg="参数不足")
 
-    #上传图片到七牛云
+    # 上传图片到七牛云
     try:
-        img_name = upload_house_image(index_img_url.read())
-    except Exception as e:
+        img_name = storage_image(image_obj.read())
+    except Exception as error:
         return jsonify(errno=RET.THIRDERR, errmsg="上传图片到七牛云异常")
 
-    #提交数据到数据库
+    houseImageob = HouseImage()
+    houseImageob.house_id = house_id
+    houseImageob.url = img_name
+    # 提交数据到数据库
     try:
-        db.session.add()
+        db.session.add(houseImageob)
         db.session.commit()
     except Exception as error:
         db.session.roolback()
         return jsonify(errno=RET.SESSIONERR, errmsg="提交数据库异常")
 
-    img_name_url = constants.QINIU_DOMIN_PREFIX + img_name
+    img_name_url = constants.QINIU_DOMIN_PREFIX + houseImageob.url
 
-    return img_name_url
-
+    return jsonify(errno=RET.OK, errmsg="", data={"url": img_name_url})
 
 
 
