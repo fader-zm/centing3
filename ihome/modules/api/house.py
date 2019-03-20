@@ -53,7 +53,7 @@ def get_areas():
     area_list = []
     for area in areas if areas else None:
         area_list.append(area.to_dict())
-
+    
     return jsonify(errno=RET.OK, errmsg="ok", data=area_list)
 
 
@@ -69,17 +69,17 @@ def upload_house_image(house_id):
     :return:
     """
     # https://shimo.im/docs/VDyhJJddhh8QgpQd/ 《七牛云接口》
-
+    
     image_obj = request.files.get("house_image")
     if not image_obj:
         return jsonify(errno=RET.PARAMERR, errmsg="参数不足")
-
+    
     # 上传图片到七牛云
     try:
         img_name = storage_image(image_obj.read())
     except Exception as error:
         return jsonify(errno=RET.THIRDERR, errmsg="上传图片到七牛云异常")
-
+    
     houseImageob = HouseImage()
     houseImageob.house_id = house_id
     houseImageob.url = img_name
@@ -90,9 +90,9 @@ def upload_house_image(house_id):
     except Exception as error:
         db.session.roolback()
         return jsonify(errno=RET.SESSIONERR, errmsg="提交数据库异常")
-
+    
     img_name_url = constants.QINIU_DOMIN_PREFIX + houseImageob.url
-
+    
     return jsonify(errno=RET.OK, errmsg="", data={"url": img_name_url})
 
 
@@ -141,8 +141,8 @@ def save_new_house():
     if not all([title, price, area_id, address, room_count, acreage, unit
                    , capacity, beds, deposit, min_days, max_days, facility]):
         return jsonify(errno=RET.PARAMERR, errmsg="参数不足")
-    if int(min_days)< 0 or int(max_days)<0 or int(min_days)>int(max_days):
-        return jsonify(errno=RET.PARAMERR,errmsg="参数错误")
+    if int(min_days) < 0 or int(max_days) < 0 or int(min_days) > int(max_days):
+        return jsonify(errno=RET.PARAMERR, errmsg="参数错误")
     # 将参数添加到数据库
     house = House()
     house.title = title
@@ -178,18 +178,18 @@ def get_house_detail(house_id):
     :param house_id:
     :return:
     # """
-    user_id=session.get("user_id")
+    user_id = session.get("user_id")
     try:
-        house=House.query.get(house_id)
+        house = House.query.get(house_id)
     except Exception as e:
-        return jsonify(errno=RET.DBERR,errmsg="查询数据库有误")
-    house_dict=house.to_full_dict()
-
-    data={
-        "house":house_dict,
-        "user_id":user_id
+        return jsonify(errno=RET.DBERR, errmsg="查询数据库有误")
+    house_dict = house.to_full_dict()
+    
+    data = {
+        "house": house_dict,
+        "user_id": user_id
     }
-    return jsonify(errno=RET.OK,errmsg="OK",data=data)
+    return jsonify(errno=RET.OK, errmsg="OK", data=data)
 
 
 # 首页房屋推荐展示
@@ -240,16 +240,14 @@ def get_house_list():
     ed = params.get("ed")
     page = 1
     # 每页显示的数据
-    per_page = 10
-    
-    if len(params) == 0:
-        print(len(params))
+    per_page = constants.HOUSE_LIST_PAGE_CAPACITY
+    if aid == '' and ed == '':
         try:
             # 没有任何查询条件时,快速的返回响应,提升用户体验
             houses_obj = House.query.filter().order_by(House.price.asc()).paginate(page, per_page, False)
         except Exception as e:
             return jsonify(errno=RET.DBERR, errmsg="数据库查询错误1")
-        
+
         # 房屋对象列表
         houses_obj_list = houses_obj.items
         # 总页数
@@ -261,26 +259,27 @@ def get_house_list():
     # 筛选条件列表
     # 请求地址条件
     house_filter_list = list()
-    house_sort_list = list()
+    house_sort = House.order_count.desc()
     # 已预约的房间, 筛选条件
     order_filter_list = list()
     # 请求页数
     if "p" in params.keys():
         page = params.get("p")
+        page = int(page)
     
     # 地点
     if "aid" in params.keys():
-        house_filter_list.append(House.area_id == params.get('cid'))
+        house_filter_list.append(House.area_id == params.get('aid'))
     
     # 排序方式
     if "sk" in params.keys():
         sk_rule = params.get("sk")
         if sk_rule == "booking":
-            house_sort_list.append(House.order_count.desc())
+            house_sort = House.order_count.desc()
         elif sk_rule == "price-inc":
-            house_sort_list.append(House.price)
+            house_sort = House.price
         elif sk_rule == "price-des":
-            house_sort_list.append(House.price.desc())
+            house_sort = House.price.desc()
     
     # 预订时间
     if "sd" in params.keys():
@@ -293,25 +292,25 @@ def get_house_list():
         order_filter_list.append(Order.begin_date < datetime.date.today())
     
     # 不能预订的房间id
-    nagtive_house_id_list = list()
-    if len(order_filter_list) > 0:
+    if order_filter_list:
         try:
             # 查询出不能预订的房间对象
             orders = Order.query.filter(or_(*order_filter_list)).all()
         except Exception as e:
+            current_app.logger.error(e)
             return jsonify(errno=RET.DBERR, errmsg="数据库查询错误2")
         if orders:
             nagtive_house_id_list = [order.house_id for order in orders]
-    
-    # not_(House.id.in_(nagtive_house_id_list)) 为筛选条件, 筛选出可以预订的房间
-    house_filter_list.append(not_(House.id.in_(nagtive_house_id_list)))
+            # not_(House.id.in_(nagtive_house_id_list)) 为筛选条件, 筛选出可以预订的房间
+            house_filter_list.append(House.id.notin_(nagtive_house_id_list))
     
     # 查询出可以预约的房间
     try:
-        houses_obj = House.query.filter(*house_filter_list).order_by(*house_sort_list).paginate(page, per_page, False)
+        houses_obj = House.query.filter(*house_filter_list).order_by(house_sort).paginate(page, per_page, False)
     except Exception as e:
+        current_app.logger.error(e)
         return jsonify(errno=RET.DBERR, errmsg="数据库查询错误3")
-    
+   
     # 房屋对象列表
     houses_obj_list = houses_obj.items
     # 总页数
@@ -321,13 +320,3 @@ def get_house_list():
         data = dict(houses=[house.to_basic_dict() for house in houses_obj_list], total_page=total_page)
         return jsonify(errno=0, errmsg="ok", data=data)
     return jsonify(errno=0, errmsg="ok", data=data)
-
-
-
-
-
-
-
-
-
-
