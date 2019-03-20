@@ -212,9 +212,8 @@ def house_index():
     
     # 去除已经预约或入住的房间, 找到可出租的房间, 以订单量, 房间信息更新时间为排序条件
     try:
-        house_obj_list = House.query.filter(not_(House.id.in_(ordered_house_id)))\
-            .order_by(House.order_count.desc(), House.update_time.desc())\
-            .limit(constants.HOME_PAGE_MAX_HOUSES)
+        house_obj_list = House.query.filter(not_(House.id.in_(ordered_house_id))).limit(constants.HOME_PAGE_MAX_HOUSES)
+        # house_obj_list = House.query.filter(not_(House.id.in_(ordered_house_id))).order_by(House.order_count.desc(), House.update_time.desc()).limit(constants.HOME_PAGE_MAX_HOUSES)
     except Exception as e:
         # current_app.logger.error('房间信息获取失败', e)
         return jsonify(errno=RET.DBERR, errmsg="房间信息获取失败")
@@ -229,7 +228,6 @@ def house_index():
 # 搜索房屋/获取房屋列表
 # /api/v1.0/houses
 @api_blu.route('/houses')
-@login_required
 def get_house_list():
     """搜索房屋/获取房屋列表"""
     # 1. aid: 区域id, sd(start_day): 开始日期, ed(end_day): 结束时间,
@@ -250,7 +248,7 @@ def get_house_list():
             # 没有任何查询条件时,快速的返回响应,提升用户体验
             houses_obj = House.query.filter().order_by(House.price.asc()).paginate(page, per_page, False)
         except Exception as e:
-            return jsonify(errno=RET.DBERR, errmsg="数据库查询错误")
+            return jsonify(errno=RET.DBERR, errmsg="数据库查询错误1")
         
         # 房屋对象列表
         houses_obj_list = houses_obj.items
@@ -285,14 +283,14 @@ def get_house_list():
             house_sort_list.append(House.price.desc())
     
     # 预订时间
-    if "sd" in params.key():
+    if "sd" in params.keys():
         # 不能预订的房间
         start_date_str = params.get("sd")
-        order_filter_list.append(Order.end_date > datetime.strptime(start_date_str, '%Y-%m-%d').date())
-    if "ed" in params.key():
+        order_filter_list.append(Order.end_date > datetime.date.today())
+    if "ed" in params.keys():
         # 不能预订的房间
         end_date_str = params.get("ed")
-        order_filter_list.append(Order.begin_date < datetime.strptime(end_date_str, '%Y-%m-%d').date())
+        order_filter_list.append(Order.begin_date < datetime.date.today())
     
     # 不能预订的房间id
     nagtive_house_id_list = list()
@@ -301,7 +299,7 @@ def get_house_list():
             # 查询出不能预订的房间对象
             orders = Order.query.filter(or_(*order_filter_list)).all()
         except Exception as e:
-            return jsonify(errno=RET.DBERR, errmsg="数据库查询错误")
+            return jsonify(errno=RET.DBERR, errmsg="数据库查询错误2")
         if orders:
             nagtive_house_id_list = [order.house_id for order in orders]
     
@@ -312,7 +310,7 @@ def get_house_list():
     try:
         houses_obj = House.query.filter(*house_filter_list).order_by(*house_sort_list).paginate(page, per_page, False)
     except Exception as e:
-        return jsonify(errno=RET.DBERR, errmsg="数据库查询错误")
+        return jsonify(errno=RET.DBERR, errmsg="数据库查询错误3")
     
     # 房屋对象列表
     houses_obj_list = houses_obj.items

@@ -13,7 +13,7 @@ QINIU_DOMIN_PREFIX = "http://pojj5f4t0.bkt.clouddn.com/"
 AREA_INFO_REDIS_EXPIRES = 7200
 
 # 首页展示最多的房屋数量
-HOME_PAGE_MAX_HOUSES = 5
+HOME_PAGE_MAX_HOUSES = 3
 
 # 首页房屋数据的Redis缓存时间，单位：秒
 HOME_PAGE_DATA_REDIS_EXPIRES = 7200
