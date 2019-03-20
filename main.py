@@ -1,4 +1,4 @@
-from flask import session
+from flask import session, current_app
 from flask_script import Manager
 from flask_migrate import MigrateCommand
 from ihome import create_app
@@ -15,4 +15,5 @@ mgr.add_command("mc", MigrateCommand)
 
 
 if __name__ == '__main__':
+    # print(app.url_map)
     mgr.run()
