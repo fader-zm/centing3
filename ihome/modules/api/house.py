@@ -2,7 +2,7 @@ import datetime
 
 from flask import current_app, jsonify, request, g, session
 from ihome import sr, db
-from ihome.models import Area, House, Facility, HouseImage, Order
+from ihome.models import Area, House, Facility, HouseImage, Order, User
 from ihome.modules.api import api_blu
 from ihome.utils import constants
 from ihome.utils.common import login_required
@@ -13,6 +13,7 @@ from ihome.utils.response_code import RET
 
 
 # 我的发布列表
+# /api/v1.0/user/houses
 @api_blu.route('/user/houses')
 @login_required
 def get_user_house_list():
@@ -22,7 +23,28 @@ def get_user_house_list():
     2. 查询数据
     :return:
     """
-    pass
+    user_id = g.user_id
+    # try:
+    #     user = User.query.get(user_id)
+    # except Exception as e:
+    #     current_app.logger.error(e)
+    #     return jsonify(errno=RET.PARAMERR, errmsg="查询用户异常")
+    # # user = []
+    # if not user:
+    #     return jsonify(reeno=RET.SESSIONERR, errmsg="用户未登录")
+
+    # 获取房子数据
+    house = []
+    try:
+        # house = House.query.filter(house_id)
+        house_obj_list = House.query.filter(House.user_id == user_id)
+    except Exception as error:
+        return jsonify(errno=RET.PARAMERR, errmsg="查询房子数据异常")
+    # 将房子对象转换成房子数据列表
+    user_houses = [house_obj.to_basic_dict() for house_obj in house_obj_list]
+    print(user_houses)
+
+    return jsonify(errno=RET.OK, errmsg="ok", data=user_houses)
 
 
 # 获取地区信息
@@ -55,7 +77,34 @@ def upload_house_image(house_id):
     4. 进行返回
     :return:
     """
-    pass
+    # https://shimo.im/docs/VDyhJJddhh8QgpQd/ 《七牛云接口》
+
+    image_obj = request.files.get("house_image")
+    if not image_obj:
+        return jsonify(errno=RET.PARAMERR, errmsg="参数不足")
+
+    # 上传图片到七牛云
+    try:
+        img_name = storage_image(image_obj.read())
+    except Exception as error:
+        return jsonify(errno=RET.THIRDERR, errmsg="上传图片到七牛云异常")
+
+    houseImageob = HouseImage()
+    houseImageob.house_id = house_id
+    houseImageob.url = img_name
+    # 提交数据到数据库
+    try:
+        db.session.add(houseImageob)
+        db.session.commit()
+    except Exception as error:
+        db.session.roolback()
+        return jsonify(errno=RET.SESSIONERR, errmsg="提交数据库异常")
+
+    img_name_url = constants.QINIU_DOMIN_PREFIX + houseImageob.url
+
+    return jsonify(errno=RET.OK, errmsg="", data={"url": img_name_url})
+
+
 
 
 # 发布房源
