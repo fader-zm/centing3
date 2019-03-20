@@ -26,7 +26,7 @@ def get_user_info():
     user_id = g.user_id
     user = User.query.get(user_id)
 
-    return jsonify(errno=RET.OK, errmsg="OK", data = user.to_dict())
+    return jsonify(errno=RET.OK, errmsg="OK", data=user.to_dict())
 
 
 # 修改用户名avatar
@@ -133,18 +133,16 @@ def get_user_auth():
         return jsonify(errno=RET.PARAMERR, errmsg='异常')
 
     # 获取当前用户的信息并转换成字典
-    # data = user.to_dict() if user else None
 
-    real_name=user.real_name
-    id_card=user.id_card
+    real_name = user.real_name
+    id_card = user.id_card
 
-    data={
-        'real_name':real_name,
-        'id_card':id_card
+    data = {
+        'real_name': real_name,
+        'id_card': id_card
     }
     # 返回信息
     return jsonify(errno=RET.OK, errmsg='OK', data=data)
-
 
 
 # 设置用户实名信息

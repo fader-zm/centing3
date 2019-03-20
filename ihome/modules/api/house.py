@@ -93,7 +93,7 @@ def upload_house_image(house_id):
 
     url = constants.QINIU_DOMIN_PREFIX + image_name
     houseImage = HouseImage()
-    houseImage.url = url
+    houseImage.url = image_name
     houseImage.house_id = house.id
 
     try:
@@ -105,7 +105,7 @@ def upload_house_image(house_id):
         db.session.roolback()
         return jsonify(errno=RET.SESSIONERR, errmsg="提交数据库异常")
 
-    return jsonify(errno=RET.OK, errmsg="", data={"url": img_name_url})
+    return jsonify(errno=RET.OK, errmsg="", data={"url": url})
 
 
 # 发布房源

@@ -48,14 +48,13 @@ def add_order():
         if days > house.max_days:
             return jsonify(errno=RET.PARAMERR, errmsg="预定天数大于最大预订天数")
 
-     # 如果订单状态不是取消或者拒单,则该订单不可进行下单
-
+    # 如果订单状态不是取消或者拒单,则该订单不可进行下单
     try:
-        date_count = Order.query.filter(or_(and_(start_date <= Order.begin_date, end_date >= Order.begin_date ),
+        date_count = Order.query.filter(or_(and_(start_date <= Order.begin_date, end_date >= Order.begin_date),
                                             and_(start_date <= Order.end_date, end_date >= Order.end_date),
                                             and_(start_date >= Order.begin_date, end_date <= Order.end_date),
                                             and_(start_date <= Order.begin_date, end_date >= Order.end_date))
-                                    ).filter(not_(Order.status.in_(["CANCELED", "REJECTED"]))).count()
+                                        ).filter(not_(Order.status.in_(["CANCELED", "REJECTED"]))).count()
     except Exception as e:
         current_app.logger.error(e)
         return jsonify(errno=RET.DBERR, errmsg="查询参数错误")
@@ -110,7 +109,7 @@ def get_orders():
         for order in order_list if order_list else []:
             order_dict_list.append(order.to_dict())
         data = {
-            "orders":order_dict_list
+            "orders": order_dict_list
         }
         return jsonify(errno=RET.OK, errmsg="查询订单信息成功", data=data)
     if role == "landlord":
@@ -193,4 +192,32 @@ def order_comment():
     3. 修改模型
     :return:
     """
-    pass
+    user_id = g.user_id
+    comment = request.json.get('comment')
+    order_id = request.json.get('order_id')
+
+    if not all([comment, order_id]):
+        return jsonify(errno=RET.PARAMERR, errmsg='参数不足')
+
+    try:
+        order = Order.query.filter(order_id == Order.id, Order.user_id == user_id,
+                                   Order.status == 'WAIT_COMMENT').first()
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.DBERR, errmsg='查询订单对象异常')
+
+    if not order:
+        return jsonify(errno=RET.NODATA, errmsg='无订单')
+
+    order.comment = comment
+    order.status = 'COMPLETE'
+
+    try:
+        db.session.add(order)
+        db.session.commit()
+    except Exception as e:
+        current_app.logger.error(e)
+        db.session.rollback()
+        return jsonify(errno=RET.DBERR, errmsg='数据库存储订单异常')
+
+    return jsonify(errno=RET.OK, errmsg='发表评论成功')
